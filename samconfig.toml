@@ -1,0 +1,10 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "cps-covid-etl"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-i322ru54b8qp"
+s3_prefix = "cps-covid-etl"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+

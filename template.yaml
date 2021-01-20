@@ -1,0 +1,41 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  CPS-COVID-ETL
+
+  Sample SAM Template for CSV_Update
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 300
+
+Resources:
+  CPSCovidUpdateFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: csv_update/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 256
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action: "S3:*"
+              Resource: "arn:aws:s3:::cpscovid.com/*"
+      Events:
+        MidnightUpdate:
+          Type: Schedule
+          Properties:
+            Description: Activates CPS COVID Update Lambda Function at Midnight to update .csv data
+            Enabled: True
+            Schedule: "cron(0 6 * * ? *)"
+        
+Outputs:
+  CPSCovidUpdateFunction:
+    Description: "CPS COVID Update Lambda Function ARN"
+    Value: !GetAtt CPSCovidUpdateFunction.Arn
+  CPSCovidUpdateFunctionIamRole:
+    Description: "Implicit IAM Role created for CPS COVID Update function"
+    Value: !GetAtt CPSCovidUpdateFunctionRole.Arn
