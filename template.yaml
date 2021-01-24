@@ -3,27 +3,22 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   CPS-COVID-ETL
 
-  Sample SAM Template for CSV_Update
-
-# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+  SAM Template for CSV_Update
 Globals:
   Function:
     Timeout: 300
 
 Resources:
   CPSCovidUpdateFunction:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Type: AWS::Serverless::Function 
     Properties:
       CodeUri: csv_update/
       Handler: app.lambda_handler
       Runtime: python3.8
       MemorySize: 256
       Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action: "S3:*"
-              Resource: "arn:aws:s3:::cpscovid.com/*"
+        - S3FullAccessPolicy:
+            BucketName: "cpscovid.com/*"
       Events:
         MidnightUpdate:
           Type: Schedule
@@ -31,6 +26,30 @@ Resources:
             Description: Activates CPS COVID Update Lambda Function at Midnight to update .csv data
             Enabled: True
             Schedule: "cron(0 6 * * ? *)"
+  AlarmTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+      - Protocol: email
+        Endpoint: ondrey@gmail.com
+
+  Alarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmActions:
+        - !Ref AlarmTopic
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref CPSCovidUpdateFunction
+      EvaluationPeriods: 1
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Period: 60
+      TreatMissingData: notBreaching
+      Statistic: Sum
+      Threshold: '1'
+
         
 Outputs:
   CPSCovidUpdateFunction:

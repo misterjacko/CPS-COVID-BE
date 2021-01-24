@@ -11,31 +11,34 @@ At midnight local time (6am UMT) an [EventBridge](https://aws.amazon.com/eventbr
 
 The function also pulls a csv file containing all the school's totals, previous daily counts, and location data for each school.
 
-Both of these files (historical data and new data) are loaded into a [pandas](https://pandas.pydata.org/) dataframe and evaluated. A new column is added to the historical data containing the new cases at each school (historical total - new total) and then the historical total is updated to reflect the new total. The now up-to-date 'historical data' is exported as a .csv and placed back in the S3 bucket used by the front-end. 
+Both of these files (historical data and new data) are loaded into a [pandas](https://pandas.pydata.org/) dataframe and evaluated. First, the new data is validated through a number of tests fo verify that it is in a format that is expected (the process will abort if there is an error). Then, new column is added to the historical data containing the new cases at each school (historical total - new total) and then the historical total is updated to reflect the new total. The now up-to-date 'historical data' is exported as a .csv and placed back in the S3 bucket used by the front-end. 
+
+A CloudWatch Alarm is set up to monitor the Lambda function and send out an SNS notification in the event of a failure (for whatever reason)
 
 ![infrastructure architecturepart 1](./architecture1.png)
 
 ![infrastructure architecture part 2](./architecture2.png)
 
-<!-- The repository for the front end can be found [here]() -->
+<!-- The repository for the front end can be found [here](https://github.com/misterjacko/CPS-COVID-FE). -->
 
 ## Technology stack: 
   
-The project is built with the [AWS Serverless Application Model (SAM)](https://aws.amazon.com/serverless/sam/) and consists primarily of a `template.yaml` file that describes the deployed archetecture, and an `app.py` file that outlines the function that will run on AWS lambda. Once build and deployed to AWS, the function, IAM roles, EventBridge schedule, etc. are configured and become real infrastructure.
+The project is built with the [AWS Serverless Application Model (SAM)](https://aws.amazon.com/serverless/sam/) and consists primarily of a `template.yaml` file that describes the deployed archetecture, and an `app.py` file that outlines the function that will run on [AWS Lambda](). Once build and deployed to AWS, the function, IAM roles, [EventBridge (CloudWatch Events)]() schedule, etc. are configured and become real infrastructure.
 
-The function, written in python, uses the pandas framework to update 'yesterday's' dataset with the new totals that are published by the school district.
+The function, written in python, uses the [pandas]() framework to update 'yesterday's' dataset with the new totals that are published by the school district.
 
-Once the dataset is updated, it is saved as the same file in a versioned S3 bucket.
+A [CloudWatch Alarm]() is triggered if the function fails for any reason, and notifies me via [SNS](). 
+
+Once the dataset is updated, it is saved as the same file in a versioned [S3]() bucket.
 
 ## Status:  
 - Minimum Viable Product
 
 ## Known issues/technical debt:
-- Set up to only parse for updates to the second quarter of school year 21 (Q2 ST21) which ends Feb-4. Will need to pay off by then.
-- Schools are sorted in order and logic is not added to ensure that number comparisons are done between schools with equal name values.
+- Set up to only parse for updates to the second quarter of school year 21 (Q2 ST21) which ends Feb-4. Will need to pay off by then but included tests should prevent update if the format changes before then.
 
 ## TODO:
-- Support for more informative popouts ie. School histogram might need to fetch a dataset containing running 7 or 14 day averages, weekly summaries etc.
+- Support for more informative popouts ie. School time-series graph might need to fetch a dataset containing running 7 or 14 day averages, weekly summaries etc.
 - Pay off tech debt.
 - Depends on requirements from front-end.
 
