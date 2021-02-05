@@ -53,8 +53,15 @@ def updateOldData(fresh):
     newrow = [formated, newdaily, newrunning, int(round(new7day))]
     oldtotals.loc[len(oldtotals)] = newrow
 
+    # make transposed df for easire parsing for front end
+    transposed = olddf.transpose()
+    new_header = transposed.iloc[0]
+    transposed = transposed[1:]
+    transposed.columns = new_header
+
     exportUpdated(olddf, 'allCpsCovidData.csv')
     exportUpdated(oldtotals, 'CPStotals.csv')
+    exportUpdated(transposed, 'newFormatTest.csv')
 
 def exportUpdated(updated, fileName):
     csv_buffer = StringIO()

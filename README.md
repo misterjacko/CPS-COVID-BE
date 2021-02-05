@@ -15,27 +15,27 @@ Both of these files (historical data and new data) are loaded into a [pandas](ht
 
 A CloudWatch Alarm is set up to monitor the Lambda function and send out an SNS notification in the event of a failure (for whatever reason)
 
-![infrastructure architecturepart 1](./architecture1.png)
+![infrastructure architecturepart 1](https://github.com/misterjacko/CPS-COVID-BE/blob/main/Architecture1.png)
 
-![infrastructure architecture part 2](./architecture2.png)
+![infrastructure architecture part 2](https://github.com/misterjacko/CPS-COVID-BE/blob/main/Architecture2.png)
 
-<!-- The repository for the front end can be found [here](https://github.com/misterjacko/CPS-COVID-FE). -->
+The repository for the front end can be found [here](https://github.com/misterjacko/CPS-COVID-FE).
 
 ## Technology stack: 
   
-The project is built with the [AWS Serverless Application Model (SAM)](https://aws.amazon.com/serverless/sam/) and consists primarily of a `template.yaml` file that describes the deployed archetecture, and an `app.py` file that outlines the function that will run on [AWS Lambda](). Once build and deployed to AWS, the function, IAM roles, [EventBridge (CloudWatch Events)]() schedule, etc. are configured and become real infrastructure.
+The project is built with the [AWS Serverless Application Model (SAM)](https://aws.amazon.com/serverless/sam/) and consists primarily of a `template.yaml` file that describes the deployed archetecture, and an `app.py` file that outlines the function that will run on [AWS Lambda](https://aws.amazon.com/lambda/). Once build and deployed to AWS, the function, IAM roles, [EventBridge (CloudWatch Events)](https://aws.amazon.com/cloudwatch/) schedule, etc. are configured and become real infrastructure.
 
-The function, written in python, uses the [pandas]() framework to update 'yesterday's' dataset with the new totals that are published by the school district.
+The function, written in python, uses the [pandas](https://pandas.pydata.org/) framework to update 'yesterday's' dataset with the new totals that are published by the school district.
 
-A [CloudWatch Alarm]() is triggered if the function fails for any reason, and notifies me via [SNS](). 
+A [CloudWatch Alarm](https://aws.amazon.com/cloudwatch/) is triggered if the function fails for any reason, and notifies me via [SNS](https://aws.amazon.com/sns/?whats-new-cards.sort-by=item.additionalFields.postDateTime&whats-new-cards.sort-order=desc). 
 
-Once the dataset is updated, it is saved as the same file in a versioned [S3]() bucket.
+Once the dataset is updated, it is saved as the same file in a versioned [S3](https://aws.amazon.com/s3/) bucket.
 
 ## Status:  
 - Minimum Viable Product
 
 ## Known issues/technical debt:
-- Set up to only parse for updates to the second quarter of school year 21 (Q2 ST21) which ends Feb-4. Will need to pay off by then but included tests should prevent update if the format changes before then.
+- Set up to only parse for updates to the second quarter of school year 2021 (Q3 ST21) which ends April-15. Will need to pay off by then but included tests should prevent update if the format changes before then.
 
 ## TODO:
 - Support for more informative popouts ie. School time-series graph might need to fetch a dataset containing running 7 or 14 day averages, weekly summaries etc.
