@@ -59,13 +59,19 @@ def updateOldData(fresh):
     transposed = transposed[1:]
     transposed.columns = new_header
 
+    # export to csv
     exportUpdated(olddf, 'allCpsCovidData.csv')
     exportUpdated(oldtotals, 'CPStotals.csv')
     exportUpdated(transposed, 'newFormatTest.csv')
 
 def exportUpdated(updated, fileName):
     csv_buffer = StringIO()
-    updated.to_csv(csv_buffer, index=False)
+
+    # temp patch to deal with index column after transpose
+    if fileName == 'newFormatTest.csv':
+        updated.to_csv(csv_buffer, index=True)
+    else:
+        updated.to_csv(csv_buffer, index=False)
     putLocation = "cpscovid.com"
     putKey = "data/" + fileName
     logger.info(fileName)
