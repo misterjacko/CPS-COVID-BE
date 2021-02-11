@@ -49,7 +49,6 @@ def downloadNewData (): # returns data as panndas.df
 def updateOldData(fresh):
     olddf = pd.read_csv("https://s3.amazonaws.com/cpscovid.com/data/allCpsCovidData.csv")
     oldtotals = pd.read_csv("https://s3.amazonaws.com/cpscovid.com/data/CPStotals.csv")
-    # currentColumn = list(fresh.columns)[len(fresh.columns)-1]
     
     # make list of acceptable school IDs
     schoolIDList = olddf.CPS_School_ID.tolist()
