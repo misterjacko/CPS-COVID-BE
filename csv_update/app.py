@@ -128,9 +128,9 @@ def updateOldData(fresh):
 
 
         # export to csv
-        exportUpdated(olddf, 'allCpsCovidData1.csv')
-        exportUpdated(oldtotals, 'CPStotals1.csv')
-        exportUpdated(transposed, 'newFormatTest1.csv')
+        exportUpdated(olddf, 'allCpsCovidData.csv')
+        exportUpdated(oldtotals, 'CPStotals.csv')
+        exportUpdated(transposed, 'newFormatTest.csv')
     else:
         logger.info("no update")
 
