@@ -15,7 +15,7 @@ Resources:
       CodeUri: csv_update/
       Handler: app.lambda_handler
       Runtime: python3.8
-      MemorySize: 256
+      MemorySize: 1024
       Policies:
         - S3FullAccessPolicy:
             BucketName: "cpscovid.com/*"
@@ -23,9 +23,9 @@ Resources:
         MidnightUpdate:
           Type: Schedule
           Properties:
-            Description: Activates CPS COVID Update Lambda Function at Midnight to update .csv data
+            Description: Activates CPS COVID Update Lambda Function at the beginning of every hour.
             Enabled: True
-            Schedule: "cron(0 6 * * ? *)"
+            Schedule: "cron(0 * * * ? *)"
   AlarmTopic:
     Type: AWS::SNS::Topic
     Properties:
