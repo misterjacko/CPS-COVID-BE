@@ -1,6 +1,7 @@
 import boto3
 import logging
 import pandas as pd
+import os
 from io import StringIO
 from collections import Counter
 from datetime import datetime, timedelta
@@ -10,6 +11,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 s3client = boto3.client('s3')
+snsclient = boto3.client('sns')
 
 def newDataQuialityControl(freshurl):
     fresh = pd.read_csv(freshurl)
@@ -131,8 +133,18 @@ def updateOldData(fresh):
         exportUpdated(olddf, 'allCpsCovidData.csv')
         exportUpdated(oldtotals, 'CPStotals.csv')
         exportUpdated(transposed, 'newFormatTest.csv')
+        logger.info(sendSNS()) # this can be passed an array for subscription tags 
     else:
         logger.info("no update")
+    
+
+def sendSNS():
+    updateARN = os.environ['snsTopicArn']
+    response = snsclient.publish(
+        TopicArn=updateARN,
+        Message='test update. please ignore'
+    )
+    return response
 
 def exportUpdated(updated, fileName):
     csv_buffer = StringIO()

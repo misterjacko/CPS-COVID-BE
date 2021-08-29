@@ -19,6 +19,8 @@ Resources:
       Policies:
         - S3FullAccessPolicy:
             BucketName: "cpscovid.com/*"
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt UpdateTopic.TopicName
       Events:
         MidnightUpdate:
           Type: Schedule
@@ -26,6 +28,10 @@ Resources:
             Description: Activates CPS COVID Update Lambda Function at the beginning of every hour.
             Enabled: True
             Schedule: "cron(0 * * * ? *)"
+      Environment:
+        Variables:
+          snsTopicArn: !Ref UpdateTopic
+            
   AlarmTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -50,6 +56,14 @@ Resources:
       Statistic: Sum
       Threshold: '1'
 
+  UpdateTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: CPS numbers updated
+      Subscription:
+      - Protocol: email
+        Endpoint: ondrey@gmail.com
+
         
 Outputs:
   CPSCovidUpdateFunction:
@@ -57,4 +71,8 @@ Outputs:
     Value: !GetAtt CPSCovidUpdateFunction.Arn
   CPSCovidUpdateFunctionIamRole:
     Description: "Implicit IAM Role created for CPS COVID Update function"
-    Value: !GetAtt CPSCovidUpdateFunctionRole.Arn
+    Value: !GetAtt CPSCovidUpdateFunctionRole.Arn 
+  UpdateTopicARN:
+    Description: "Topic created for sending updates"
+    Value: !Ref UpdateTopic
+  
