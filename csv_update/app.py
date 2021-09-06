@@ -12,6 +12,7 @@ logger.setLevel(logging.INFO)
 
 s3client = boto3.client('s3')
 snsclient = boto3.client('sns')
+cloudfrontclient = boto3.client('cloudfront')
 
 def newDataQuialityControl(freshurl):
     fresh = pd.read_csv(freshurl)
@@ -56,10 +57,11 @@ def checkLastColumn(olddf, formated, updateChecker):
     else:
         return olddf, updateChecker
 
-def updateOldDf(olddf, fresh, formated, updateChecker):
+def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
     # Total all cases from each school
     # how do we skip this if there are not new numbers?
     # for now just keep it
+    newCaseDict = {}
     freshTotals = Counter(fresh['CPS School ID'])
     # determines the column indexes for tail sums 
     end = len(olddf.columns)
@@ -71,15 +73,18 @@ def updateOldDf(olddf, fresh, formated, updateChecker):
         if row['gTotal'] != freshTotals[row['CPS_School_ID']]:
             #updates daily number and total
             updateChecker = True
+            updateNumbers = True
             olddf.at[index,formated] = freshTotals[row['CPS_School_ID']] - row['gTotal'] + row[formated]
             olddf.at[index,['gTotal']] = freshTotals[row['CPS_School_ID']]
+            
+            newCaseDict[row['School']] = freshTotals[row['CPS_School_ID']] - row['gTotal'] + row[formated]
 
         # updates 7 and 14 day totals regardless of new
         # 
         olddf.at[index, ['7Total']] = olddf.iloc[index, d7:end].sum()
         olddf.at[index, ['14Total']] = olddf.iloc[index, d14:end].sum()
 
-    return olddf, updateChecker
+    return olddf, updateChecker, updateNumbers, newCaseDict
 def updateOldTotals(oldtotals, newdaily, formated):
 
     if str(oldtotals.at[len(oldtotals)-1,'date']) == formated:
@@ -105,8 +110,18 @@ def transposeDf (df):
     transposed.columns = new_header
     transposed.insert(0, 'School', begindex, allow_duplicates = True)
     return transposed
+
+def formatSNS(data):
+    messageString = "School |--| New Cases \n"
+    for item in data:
+    # for item in sorted(data, key=len, reverse=False):
+        line = '{0} -- {1} \n'.format(item, data[item])
+        messageString = '{0}{1}'.format(messageString, line)
+    return messageString
+
 def updateOldData(fresh):
     updateChecker = False
+    updateNumbers = False
     time = datetime.now() - timedelta(hours=5)
     formated = time.strftime("%Y%m%d")
 
@@ -117,7 +132,7 @@ def updateOldData(fresh):
     olddf, updateChecker = checkLastColumn(olddf, formated, updateChecker)
 
     # this function will update the master list of all cases 
-    olddf, updateChecker = updateOldDf (olddf, fresh, formated, updateChecker)
+    olddf, updateChecker, updateNumbers, newCaseDict = updateOldDf (olddf, fresh, formated, updateChecker,updateNumbers)
 
     if updateChecker:
         # update cpstotals
@@ -133,16 +148,38 @@ def updateOldData(fresh):
         exportUpdated(olddf, 'allCpsCovidData.csv')
         exportUpdated(oldtotals, 'CPStotals.csv')
         exportUpdated(transposed, 'newFormatTest.csv')
-        logger.info(sendSNS()) # this can be passed an array for subscription tags 
+        if updateNumbers:
+            
+            exportUpdated(fresh, 'dataFromCPS.csv')
+            snsString = formatSNS(newCaseDict)
+            logger.info(sendSNS(snsString)) # this can be passed an array for subscription tags 
+            invalidateCache()
+        
     else:
+        
         logger.info("no update")
     
+def invalidateCache():
+    cloudfrontID = os.environ['cloudfrontCache']
+    response = cloudfrontclient.create_invalidation(
+        DistributionId = cloudfrontID,
+        InvalidationBatch = {
+            'Paths': {
+                'Quantity': 1,
+                'Items': [
+                    '/data/*'
+                ]
+            },
+            'CallerReference': str(datetime.now())
+        }
+    )
+    return response
 
-def sendSNS():
+def sendSNS(snsMessage):
     updateARN = os.environ['snsTopicArn']
     response = snsclient.publish(
-        TopicArn=updateARN,
-        Message='test update. please ignore'
+        TopicArn = updateARN,
+        Message = snsMessage
     )
     return response
 

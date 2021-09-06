@@ -1,18 +1,55 @@
 import boto3
+import json
+import logging
+import os
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 snsclient = boto3.client('sns')
 
-def subscribe():
+def subscribe(email):
+    updateARN = os.environ['snsTopicArn']
+
     # get topic name from env
     response = snsclient.subscribe(
-        TopicArn='arn:aws:sns:us-east-1:480076109027:CPS-COVID-Dashboard-District-Updates',
-        Protocol='email',
-        Endpoint='ondrey@gmail.com',
+        TopicArn = updateARN,
+        Protocol = 'email',
+        Endpoint = email,
     )
     return response
 
-def lambda_handler(event, context):
-    print(subscribe())
-    return ('COMPLETE')
 
-print(subscribe())
+
+from datetime import datetime
+cloudfrontclient = boto3.client('cloudfront')
+
+
+def invalidateCache():
+    response = cloudfrontclient.create_invalidation(
+        DistributionId = 'E28928I27HS5YI',
+        InvalidationBatch = {
+            'Paths': {
+                'Quantity': 1,
+                'Items': [
+                    '/data/*'
+                ]
+            },
+            'CallerReference': str(datetime.now())
+        }
+    )
+    return response
+
+
+
+
+logger.info(invalidateCache())
+
+
+def lambda_handler(event, context):
+    email = event["queryStringParameters"]["email"]
+    logger.info(subscribe(email))
+    return {
+        'statuscode': 200,
+        'body': json.dumps('check email at {0} to complete subscription'.format(email))
+    }

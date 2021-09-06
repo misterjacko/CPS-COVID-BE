@@ -21,6 +21,12 @@ Resources:
             BucketName: "cpscovid.com/*"
         - SNSPublishMessagePolicy:
             TopicName: !GetAtt UpdateTopic.TopicName
+        - Statement:
+          - Sid: AllowCacheInvalidation
+            Effect: Allow
+            Action:
+            - cloudfront:CreateInvalidation
+            Resource: "*"
       Events:
         MidnightUpdate:
           Type: Schedule
@@ -31,6 +37,7 @@ Resources:
       Environment:
         Variables:
           snsTopicArn: !Ref UpdateTopic
+          cloudfrontCache: "E28928I27HS5YI"
             
   AlarmTopic:
     Type: AWS::SNS::Topic
