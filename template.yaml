@@ -70,7 +70,36 @@ Resources:
       Subscription:
       - Protocol: email
         Endpoint: ondrey@gmail.com
+  UpdateApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Cors: 
+        AllowMethods: "'GET'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+        # AllowCredentials: True
+      StageName: Prod
 
+  UpdateSubscriptionFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: subscribe/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 128
+      Events:
+        SubscribeAPI:
+          Type: Api
+          Properties: 
+            Path: /prod
+            Method: GET
+            RestApiId: !Ref UpdateApi
+      Policies:
+        - SNSCrudPolicy:
+            TopicName: !GetAtt UpdateTopic.TopicName
+      Environment:
+        Variables:
+          snsTopicArn: !Ref UpdateTopic
         
 Outputs:
   CPSCovidUpdateFunction:
@@ -82,4 +111,8 @@ Outputs:
   UpdateTopicARN:
     Description: "Topic created for sending updates"
     Value: !Ref UpdateTopic
+  SubscribeAPI:
+    Description: "API Gateway endpoint URL for Visitor Count function"
+    # Value: !Ref UpdateApi
+    Value: !Sub "https://${UpdateApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/prod/"
   

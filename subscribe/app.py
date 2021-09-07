@@ -10,46 +10,27 @@ snsclient = boto3.client('sns')
 
 def subscribe(email):
     updateARN = os.environ['snsTopicArn']
-
-    # get topic name from env
     response = snsclient.subscribe(
         TopicArn = updateARN,
         Protocol = 'email',
         Endpoint = email,
+        ReturnSubscriptionArn = True,
     )
     return response
-
-
-
-from datetime import datetime
-cloudfrontclient = boto3.client('cloudfront')
-
-
-def invalidateCache():
-    response = cloudfrontclient.create_invalidation(
-        DistributionId = 'E28928I27HS5YI',
-        InvalidationBatch = {
-            'Paths': {
-                'Quantity': 1,
-                'Items': [
-                    '/data/*'
-                ]
-            },
-            'CallerReference': str(datetime.now())
-        }
-    )
-    return response
-
-
-
-
-logger.info(invalidateCache())
-
 
 def lambda_handler(event, context):
     email = event["queryStringParameters"]["email"]
-    logger.info(subscribe(email))
+    logger.info(email)
+    logger.info(event)
+    response = subscribe(email)
+    logger.info("{0} subscribed to {1}".format(email, response))
+    bodyString = 'Subscription initiated for {0}. You must click on the link in the email to confirm.'.format(email)
     return {
-        'statuscode': 200,
-        'body': json.dumps('check email at {0} to complete subscription'.format(email))
+        'statusCode': 200,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': True,
+            'Access-Control-Allow-Methods': 'GET',
+            },
+        'body': json.dumps(bodyString),
     }
