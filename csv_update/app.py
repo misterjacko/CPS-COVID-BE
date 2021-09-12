@@ -1,4 +1,6 @@
 import boto3
+import requests
+from bs4 import BeautifulSoup as bs4
 import logging
 import pandas as pd
 import os
@@ -6,6 +8,7 @@ from io import StringIO
 from collections import Counter
 from datetime import datetime, timedelta
 from collections import deque
+
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -74,16 +77,26 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
             #updates daily number and total
             updateChecker = True
             updateNumbers = True
-            olddf.at[index,formated] = freshTotals[row['CPS_School_ID']] - row['gTotal'] + row[formated]
+            schoolName = row['School']
+            newCases = freshTotals[row['CPS_School_ID']] - row['gTotal'] + row[formated]
+            schoolLat = row['Latitude']
+            schoolLong = row['Longitude']
+
+            olddf.at[index,formated] = newCases
             olddf.at[index,['gTotal']] = freshTotals[row['CPS_School_ID']]
-            
-            newCaseDict[row['School']] = freshTotals[row['CPS_School_ID']] - row['gTotal'] + row[formated]
+            properties = [newCases, schoolLat, schoolLong]
+            newCaseDict[schoolName] = properties
+
+
+            # olddf.at[index,formated] = freshTotals[row['CPS_School_ID']] - row['gTotal'] + row[formated]
+            # olddf.at[index,['gTotal']] = freshTotals[row['CPS_School_ID']]
+
+            # newCaseDict[row['School']] = freshTotals[row['CPS_School_ID']] - row['gTotal'] + row[formated]
 
         # updates 7 and 14 day totals regardless of new
         # 
         olddf.at[index, ['7Total']] = olddf.iloc[index, d7:end].sum()
         olddf.at[index, ['14Total']] = olddf.iloc[index, d14:end].sum()
-
     return olddf, updateChecker, updateNumbers, newCaseDict
 def updateOldTotals(oldtotals, newdaily, formated):
 
@@ -112,12 +125,21 @@ def transposeDf (df):
     return transposed
 
 def formatSNS(data):
-    messageString = "School |--| New Cases \n"
+    dataString = "<tr><th>School</th><th>New Cases</th></tr>"
+    schoolCount = len(data)
+    caseCount = 0
     for item in data:
-    # for item in sorted(data, key=len, reverse=False):
-        line = '{0} -- {1} \n'.format(item, data[item])
-        messageString = '{0}{1}'.format(messageString, line)
-    return messageString
+        caseCount += data[item][0]
+        schoolURL = '?name={0}&Lat={1}&Long={2}'.format(item.replace(' ', '_'), data[item][1], data[item][2])
+        linkHTML = '<a href=./school.html{0}>{1}</a>'.format(schoolURL, item)
+        line = '<tr><td>{0}</td><td>{1}</td></tr>'.format(linkHTML, data[item][0])
+        dataString = '{0}{1}'.format(dataString, line)
+
+    summaryString = 'cpscovid.com has detected new COVID-19 cases.\n\n'
+    summaryString = '{0}{1} new cases reported.\n'.format(summaryString, caseCount)
+    summaryString = '{0}{1} schools affected.\n\n'.format(summaryString, schoolCount)
+    summaryString = '{0}View a list of newly published cases at cpscovid.com/newcases.html'.format(summaryString)
+    return dataString, summaryString
 
 def updateOldData(fresh):
     updateChecker = False
@@ -151,23 +173,42 @@ def updateOldData(fresh):
         if updateNumbers:
             
             exportUpdated(fresh, 'dataFromCPS.csv')
-            snsString = formatSNS(newCaseDict)
-            logger.info(sendSNS(snsString)) # this can be passed an array for subscription tags 
+            dataString, summaryString = formatSNS(newCaseDict)
+            exportHtml(dataString)
+            logger.info(sendSNS(summaryString)) # this can be passed an array for subscription tags 
             invalidateCache()
         
     else:
-        
         logger.info("no update")
+def exportHtml(dataString):
+    page = requests.get('https://s3.amazonaws.com/cpscovid.com/newcasesTemplate.html')
+    page = page.text
+    page = page.replace('ZrIxb9bnehGHnFuptWw8', dataString)
+
+    soup = bs4(page, 'html.parser')
+
+    putLocation = 'cpscovid.com'
+    putKey = "newcases.html"
+    tagging = "lifecycle=true"
+    acl = 'public-read'
+    ctype = "text/html"
+    logger.info(putKey)
+    response = s3client.put_object(Body=str(soup.prettify()), Bucket=putLocation, Key=putKey, Tagging=tagging, ACL=acl, ContentType=ctype)
+    logger.info(response)
     
+
+
+
 def invalidateCache():
     cloudfrontID = os.environ['cloudfrontCache']
     response = cloudfrontclient.create_invalidation(
         DistributionId = cloudfrontID,
         InvalidationBatch = {
             'Paths': {
-                'Quantity': 1,
+                'Quantity': 2,
                 'Items': [
-                    '/data/*'
+                    '/data/*',
+                    '/newcases.html'
                 ]
             },
             'CallerReference': str(datetime.now())
@@ -179,6 +220,7 @@ def sendSNS(snsMessage):
     updateARN = os.environ['snsTopicArn']
     response = snsclient.publish(
         TopicArn = updateARN,
+        Subject = 'COVID update',
         Message = snsMessage
     )
     return response

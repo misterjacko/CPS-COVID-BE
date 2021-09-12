@@ -28,12 +28,24 @@ Resources:
             - cloudfront:CreateInvalidation
             Resource: "*"
       Events:
-        MidnightUpdate:
+        WednesdayUpdate:
           Type: Schedule
           Properties:
-            Description: Activates CPS COVID Update Lambda Function at the beginning of every hour.
+            Description: Activates CPS COVID Update Lambda Function every minute on Weds.
             Enabled: True
-            Schedule: "cron(0 * * * ? *)"
+            Schedule: "cron(0/1 * ? * 4,5 *)" #every min on wed. neet to account for utc. 
+        WeekdayUpdate:
+          Type: Schedule
+          Properties:
+            Description: Activates CPS COVID Update Lambda Function every 10 min on Weekdays.
+            Enabled: True
+            Schedule: "cron(0/10 * ? * 2,3,6 *)" #every 10 min on non-wed weekday.
+        WeekendUpdate:
+          Type: Schedule
+          Properties:
+            Description: Activates CPS COVID Update Lambda Function every hour on Weekends.
+            Enabled: True
+            Schedule: "cron(0 * ? * 1,7 *)" #every hour on sun/sat. 
       Environment:
         Variables:
           snsTopicArn: !Ref UpdateTopic
