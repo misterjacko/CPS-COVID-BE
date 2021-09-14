@@ -77,26 +77,23 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
             #updates daily number and total
             updateChecker = True
             updateNumbers = True
-            schoolName = row['School']
-            newCases = freshTotals[row['CPS_School_ID']] - row['gTotal'] + row[formated]
-            schoolLat = row['Latitude']
-            schoolLong = row['Longitude']
 
-            olddf.at[index,formated] = newCases
+            olddf.at[index,formated] = freshTotals[row['CPS_School_ID']] - row['gTotal'] + row[formated]
             olddf.at[index,['gTotal']] = freshTotals[row['CPS_School_ID']]
-            properties = [newCases, schoolLat, schoolLong]
-            newCaseDict[schoolName] = properties
 
-
-            # olddf.at[index,formated] = freshTotals[row['CPS_School_ID']] - row['gTotal'] + row[formated]
-            # olddf.at[index,['gTotal']] = freshTotals[row['CPS_School_ID']]
-
-            # newCaseDict[row['School']] = freshTotals[row['CPS_School_ID']] - row['gTotal'] + row[formated]
-
-        # updates 7 and 14 day totals regardless of new
-        # 
         olddf.at[index, ['7Total']] = olddf.iloc[index, d7:end].sum()
         olddf.at[index, ['14Total']] = olddf.iloc[index, d14:end].sum()
+    if updateNumbers:
+        for index, row in olddf.iterrows():
+            if row[formated] != 0:
+                schoolName = row['School']
+                newCases = row[formated]
+                schoolLat = row['Latitude']
+                schoolLong = row['Longitude']
+
+                properties = [newCases, schoolLat, schoolLong]
+                newCaseDict[schoolName] = properties
+
     return olddf, updateChecker, updateNumbers, newCaseDict
 def updateOldTotals(oldtotals, newdaily, formated):
 
@@ -161,17 +158,14 @@ def updateOldData(fresh):
         newdaily = olddf[formated].sum()
         oldtotals = updateOldTotals(oldtotals, newdaily, formated)
 
-
         # make transposed df for easier parsing for front end maybe make a function
         transposed = transposeDf(olddf)
-
 
         # export to csv
         exportUpdated(olddf, 'allCpsCovidData.csv')
         exportUpdated(oldtotals, 'CPStotals.csv')
         exportUpdated(transposed, 'newFormatTest.csv')
-        if updateNumbers:
-            
+        if updateNumbers:          
             exportUpdated(fresh, 'dataFromCPS.csv')
             dataString, summaryString = formatSNS(newCaseDict)
             exportHtml(dataString)
@@ -196,9 +190,6 @@ def exportHtml(dataString):
     response = s3client.put_object(Body=str(soup.prettify()), Bucket=putLocation, Key=putKey, Tagging=tagging, ACL=acl, ContentType=ctype)
     logger.info(response)
     
-
-
-
 def invalidateCache():
     cloudfrontID = os.environ['cloudfrontCache']
     response = cloudfrontclient.create_invalidation(
