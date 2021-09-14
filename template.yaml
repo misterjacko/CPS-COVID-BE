@@ -28,24 +28,42 @@ Resources:
             - cloudfront:CreateInvalidation
             Resource: "*"
       Events:
-        WednesdayUpdate:
+        WeekDayStartUpdate:
           Type: Schedule
           Properties:
-            Description: Activates CPS COVID Update Lambda Function every minute on Weds.
+            Description: Activates CPS COVID Update Lambda Function every minute on 6am to 8pm weekdays.
             Enabled: True
-            Schedule: "cron(0/1 * ? * 4,5 *)" #every min on wed. neet to account for utc. 
-        WeekdayUpdate:
+            Schedule: "cron(0/1 11-23 ? * 2,3,4,5,6 *)" #every min on wed. neet to account for utc. 
+        WeekDayEndUpdate:
           Type: Schedule
           Properties:
-            Description: Activates CPS COVID Update Lambda Function every 10 min on Weekdays.
+            Description: Activates CPS COVID Update Lambda Function every minute on 6am to 8pm weekdays.
             Enabled: True
-            Schedule: "cron(0/10 * ? * 2,3,6 *)" #every 10 min on non-wed weekday.
-        WeekendUpdate:
+            Schedule: "cron(0/1 0 ? * 3,4,5,6,7 *)" #every min on wed. neet to account for utc.
+        WeekNightStartUpdate:
+          Type: Schedule
+          Properties:
+            Description: Activates CPS COVID Update Lambda Function every 10 min on weeknights.
+            Enabled: True
+            Schedule: "cron(0/10 5-10 ? * 2,3,4,5,6 *)" #every 10 min on non-wed weekday.
+        WeekNightEndUpdate:
+          Type: Schedule
+          Properties:
+            Description: Activates CPS COVID Update Lambda Function every 10 min on weeknights.
+            Enabled: True
+            Schedule: "cron(0/10 1-4 ? * 3,4,5,6,7 *)" #every 10 min on non-wed weekday.
+        WeekendStartUpdate:
           Type: Schedule
           Properties:
             Description: Activates CPS COVID Update Lambda Function every hour on Weekends.
             Enabled: True
-            Schedule: "cron(0 * ? * 1,7 *)" #every hour on sun/sat. 
+            Schedule: "cron(0 5-23 ? * 1,7 *)" #every hour on sun/sat. 
+        WeekendEndUpdate:
+          Type: Schedule
+          Properties:
+            Description: Activates CPS COVID Update Lambda Function every hour on Weekends.
+            Enabled: True
+            Schedule: "cron(0 1-4 ? * 1,2 *)" #every hour on sun/sat. 
       Environment:
         Variables:
           snsTopicArn: !Ref UpdateTopic
