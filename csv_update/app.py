@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup as bs4
 import logging
 import pandas as pd
 import os
+import tweepy
 from io import StringIO
 from collections import Counter
 from datetime import datetime, timedelta
@@ -132,11 +133,16 @@ def formatSNS(data):
         line = '<tr><td>{0}</td><td>{1}</td></tr>'.format(linkHTML, data[item][0])
         dataString = '{0}{1}'.format(dataString, line)
 
-    summaryString = 'cpscovid.com has detected new COVID-19 cases.\n\n'
-    summaryString = '{0}{1} new cases reported.\n'.format(summaryString, caseCount)
-    summaryString = '{0}{1} schools affected.\n\n'.format(summaryString, schoolCount)
-    summaryString = '{0}View a list of newly published cases at cpscovid.com/newcases.html'.format(summaryString)
-    return dataString, summaryString
+    sns_string = 'cpscovid.com has detected new COVID-19 cases.\n\n'
+    sns_string = '{0}{1} new cases reported.\n'.format(sns_string, caseCount)
+    sns_string = '{0}{1} schools affected.\n\n'.format(sns_string, schoolCount)
+    sns_string = '{0}View a list of newly published cases at cpscovid.com/newcases.html'.format(sns_string)
+
+    tweet_string = 'Case numbers updated by @ChiPubSchools.\n\n'
+    tweet_string = '{0}New cases: {1}\/'.format(tweet_string, caseCount)
+    tweet_string = '{0}Schools affected: {1}\n\n'.format(tweet_string, schoolCount)
+    tweet_string = '{0}View the list of cases at cpscovid.com/newcases.html'.format(tweet_string)
+    return dataString, sns_string, tweet_string
 
 def updateOldData(fresh):
     updateChecker = False
@@ -167,13 +173,27 @@ def updateOldData(fresh):
         exportUpdated(transposed, 'newFormatTest.csv')
         if updateNumbers:          
             exportUpdated(fresh, 'dataFromCPS.csv')
-            dataString, summaryString = formatSNS(newCaseDict)
+            dataString, sns_string, tweet_string = formatSNS(newCaseDict)
             exportHtml(dataString)
-            logger.info(sendSNS(summaryString)) # this can be passed an array for subscription tags 
+            logger.info(sendSNS(sns_string)) # this can be passed an array for subscription tags 
             invalidateCache()
+            sendTweet(tweet_string)
         
     else:
         logger.info("no update")
+
+def sendTweet(tweet_string):
+    consumer_key = os.environ['consumer_key']
+    consumer_secret = os.environ['consumer_secret']
+    access_token = os.environ['access_token']
+    access_token_secret = os.environ['access_token_secret']
+
+    auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+    auth.set_access_token(access_token, access_token_secret)
+    api = tweepy.API(auth)  
+    api.update_status(status = tweet_string)
+
+
 def exportHtml(dataString):
     page = requests.get('https://s3.amazonaws.com/cpscovid.com/newcasesTemplate.html')
     page = page.text
