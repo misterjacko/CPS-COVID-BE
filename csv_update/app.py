@@ -139,7 +139,7 @@ def formatSNS(data):
     sns_string = '{0}View a list of newly published cases at cpscovid.com/newcases.html'.format(sns_string)
 
     tweet_string = 'Case numbers updated by @ChiPubSchools.\n\n'
-    tweet_string = '{0}New cases: {1}\/'.format(tweet_string, caseCount)
+    tweet_string = '{0}New cases: {1}\n'.format(tweet_string, caseCount)
     tweet_string = '{0}Schools affected: {1}\n\n'.format(tweet_string, schoolCount)
     tweet_string = '{0}View the list of cases at cpscovid.com/newcases.html'.format(tweet_string)
     return dataString, sns_string, tweet_string
@@ -178,6 +178,7 @@ def updateOldData(fresh):
             logger.info(sendSNS(sns_string)) # this can be passed an array for subscription tags 
             invalidateCache()
             sendTweet(tweet_string)
+            # logger.info(tweet_string)
         
     else:
         logger.info("no update")

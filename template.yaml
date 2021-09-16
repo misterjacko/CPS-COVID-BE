@@ -18,7 +18,7 @@ Resources:
       MemorySize: 1024
       Policies:
         - S3FullAccessPolicy:
-            BucketName: "cpscovid.com/*"
+            BucketName: "cpscovid.com"
         - SNSPublishMessagePolicy:
             TopicName: !GetAtt UpdateTopic.TopicName
         - Statement:
