@@ -63,7 +63,7 @@ Resources:
           Properties:
             Description: Activates CPS COVID Update Lambda Function every hour
             Enabled: True
-            Schedule: "cron(0 * ? * * *)" #every hour every day
+            Schedule: "cron(0/5 * ? * * *)" #every 5 minutes every day
         # WeekendEndUpdate:
         #   Type: Schedule
         #   Properties:

@@ -46,7 +46,8 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
     # Total all cases from each school
     # how do we skip this if there are not new numbers?
     # for now just keep it
-    newCaseDict = {}
+    day_total_dict = {}
+    new_update_dict = {}
     # freshTotals = Counter(fresh['CPS School ID'])
 
     #makes a dict of school totals with schoolid = casetotals
@@ -56,31 +57,35 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
             freshTotals[week['SchoolID']] = week['TotalCaseCount']
         else:
             freshTotals[week['SchoolID']] += week['TotalCaseCount']
-    # print(freshTotals)
+    logger.info("SY2122 cases processed")
     # determines the column indexes for tail sums 
     end = len(olddf.columns)
-    d7 = end - 7
+    d7 = end - 6
     d14 = end - 13
     d21 = end - 20
     # Primary df update
 
     for index, row in olddf.iterrows():
         if row['CPS_School_ID'] not in freshTotals:
+            # logger.info(row['CPS_School_ID'])
             continue
         # determines if there is and difference between old totals and fresh totals
         if row['gTotal'] - row['preSY2122'] != freshTotals[row['CPS_School_ID']]:
-            yearTotal = row['gTotal'] - row['preSY2122']
+            year_total = row['gTotal'] - row['preSY2122']
+            new_case_number = freshTotals[row['CPS_School_ID']] - year_total
             # print("not")
             #updates daily number and total
             updateChecker = True
             updateNumbers = True
 
-            olddf.at[index,formated] = freshTotals[row['CPS_School_ID']] - yearTotal + row[formated]
+            new_update_dict[row['CPS_School_ID']] = new_case_number
+            olddf.at[index,formated] = new_case_number + row[formated]
             olddf.at[index,['gTotal']] = freshTotals[row['CPS_School_ID']] + row['preSY2122']
 
         olddf.at[index, ['7Total']] = olddf.iloc[index, d7:end].sum()
         olddf.at[index, ['14Total']] = olddf.iloc[index, d14:end].sum()
         olddf.at[index, ['21Total']] = olddf.iloc[index, d21:end].sum()
+    logger.info("New and old cases compared")
     if updateNumbers:
         for index, row in olddf.iterrows():
             if row[formated] != 0:
@@ -90,9 +95,9 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
                 schoolLong = row['Longitude']
 
                 properties = [newCases, schoolLat, schoolLong]
-                newCaseDict[schoolName] = properties
+                day_total_dict[schoolName] = properties
 
-    return olddf, updateChecker, updateNumbers, newCaseDict
+    return olddf, updateChecker, updateNumbers, day_total_dict, new_update_dict
 def updateOldTotals(oldtotals, newdaily, formated):
 
     if str(oldtotals.at[len(oldtotals)-1,'date']) == formated:
@@ -119,45 +124,69 @@ def transposeDf (df):
     transposed.insert(0, 'School', begindex, allow_duplicates = True)
     return transposed
 
-def formatSNS(data, table_date):
-    dataString = "<caption>Date: {0}</caption>".format(table_date)
-    dataString = "{0}<tr><th>School</th><th>New Cases</th></tr>".format(dataString)
-    schoolCount = len(data)
-    caseCount = 0
-    for item in data:
-        caseCount += data[item][0]
-        schoolURL = '?name={0}&Lat={1}&Long={2}'.format(item.replace(' ', '_'), data[item][1], data[item][2])
+def formatMessages(day_data, new_data, time):
+
+    date_string = time.strftime("%b. %d, %Y")
+    date_time_string = time.strftime("%I:%M %p, %b. %d, %Y")
+
+    new_school_count = len(new_data)
+    new_case_count = 0
+    for item in new_data:
+        new_case_count += new_data[item]
+
+    day_school_count = len(day_data)
+    day_case_count = 0
+    dataString = "<caption>Date: {0}</caption>".format(date_string)
+    dataString = "{0}<tr><th>School</th><th>New Cases</th></tr>".format(dataString)    
+    for item in day_data:
+        day_case_count += day_data[item][0]
+        schoolURL = '?name={0}&Lat={1}&Long={2}'.format(item.replace(' ', '_'), day_data[item][1], day_data[item][2])
         linkHTML = '<a href=./school.html{0}>{1}</a>'.format(schoolURL, item)
-        line = '<tr><td>{0}</td><td>{1}</td></tr>'.format(linkHTML, data[item][0])
+        line = '<tr><td>{0}</td><td>{1}</td></tr>'.format(linkHTML, day_data[item][0])
         dataString = '{0}{1}'.format(dataString, line)
+
+    # SNS Email formatting
     sns_string = 'cpscovid.com has detected new COVID-19 cases.\n\n'
-    sns_string = '{0}{1} new cases reported.\n'.format(sns_string, caseCount)
-    sns_string = '{0}{1} schools affected.\n\n'.format(sns_string, schoolCount)
-    sns_string = '{0}View a list of newly published cases at cpscovid.com/newcases.html\n\n'.format(sns_string)
+    sns_string = '{0}Update: {1}\n'.format(sns_string, date_time_string)
+    sns_string = '{0}New cases: {1}\n'.format(sns_string, new_case_count)
+    sns_string = '{0}Schools affected: {1}\n\n'.format(sns_string, new_school_count)
+    sns_string = '{0}Cumulative cases reported {1}\n'.format(sns_string, date_string)
+    sns_string = '{0}New cases: {1}\n'.format(sns_string, day_case_count)
+    sns_string = '{0}Schools affected: {1}\n\n'.format(sns_string, day_school_count)
+    sns_string = '{0}View the list of cases at cpscovid.com/newcases.html\n\n'.format(sns_string)
     sns_string = '{0}Follow @CPSCovid on twitter at twitter.com/CPSCovid'.format(sns_string)
 
+    # Tweet Formatting
     tweet_string = 'Case numbers updated by @ChiPubSchools.\n\n'
-    tweet_string = '{0}Cumulative cases reported {1}\n'.format(tweet_string, table_date)
-    tweet_string = '{0}New cases: {1}\n'.format(tweet_string, caseCount)
-    tweet_string = '{0}Schools affected: {1}\n\n'.format(tweet_string, schoolCount)
-    tweet_string = '{0}View the list of cases at cpscovid.com/newcases.html'.format(tweet_string)
+    tweet_string = '{0}Update: {1}\n'.format(tweet_string, date_time_string)
+    tweet_string = '{0}New cases: {1}\n'.format(tweet_string, new_case_count)
+    tweet_string = '{0}Schools affected: {1}\n\n'.format(tweet_string, new_school_count)
+    tweet_string = '{0}Cumulative cases reported {1}\n'.format(tweet_string, date_string)
+    tweet_string = '{0}New cases: {1}\n'.format(tweet_string, day_case_count)
+    tweet_string = '{0}Schools affected: {1}\n\n'.format(tweet_string, day_school_count)
+    tweet_string = '{0}View the list of cases at cpscovid.com/newcases.html\n\n'.format(tweet_string)
+    tweet_string = '{0}*this is an auto-generated tweet'.format(tweet_string)
     return dataString, sns_string, tweet_string
 
 def updateOldData(fresh):
     updateChecker = False
     updateNumbers = False
-    time = datetime.now() - timedelta(hours=5)
+    time = datetime.now() - timedelta(hours=6)
     formated = time.strftime("%Y%m%d")
-    table_date = time.strftime("%b %d %Y")
 
     olddf = pd.read_csv("https://s3.amazonaws.com/cpscovid.com/data/allCpsCovidData.csv")
+    logger.info("S3 Date Downloaded")
     oldtotals = pd.read_csv("https://s3.amazonaws.com/cpscovid.com/data/CPStotals.csv")
+    logger.info("S3 Totals Downloaded")
     
     # ensures today's date is in olddf
     olddf, updateChecker = checkLastColumn(olddf, formated, updateChecker)
+    logger.info("Last Column Checked for date")
+    
 
     # this function will update the master list of all cases
-    olddf, updateChecker, updateNumbers, newCaseDict = updateOldDf (olddf, fresh, formated, updateChecker, updateNumbers)
+    olddf, updateChecker, updateNumbers, day_total_dict, new_update_dict = updateOldDf (olddf, fresh, formated, updateChecker, updateNumbers)
+    logger.info("Data update Complete")
 
     if updateChecker:
         # update cpstotals
@@ -172,7 +201,7 @@ def updateOldData(fresh):
         exportUpdated(oldtotals, 'CPStotals.csv')
         exportUpdated(transposed, 'newFormatTest.csv')
         if updateNumbers:          
-            dataString, sns_string, tweet_string = formatSNS(newCaseDict, table_date)
+            dataString, sns_string, tweet_string = formatMessages(day_total_dict, new_update_dict, time)
             exportHtml(dataString)
             logger.info(sendSNS(sns_string)) # this requires topicARN and wont work in test
             invalidateCache()
@@ -255,6 +284,8 @@ def findCSVDate(date):
     return (datetime.strftime(datetime.strptime(date, "%m/%d/%Y") + timedelta(days=6), "%Y%m%d"))
 
 def lambda_handler(event, context):
+    logger.info("START")
     fresh = downloadNewData()
+    logger.info("CPS Data Downloaded")
     updateOldData(fresh)
     return ('COMPLETE')
