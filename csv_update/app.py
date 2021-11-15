@@ -42,6 +42,17 @@ def checkLastColumn(olddf, formated, updateChecker):
     else:
         return olddf, updateChecker
 
+def listOfOldSchools(olddf):
+    old_school_list = []
+    old_school_list = olddf['CPS_School_ID'].tolist()
+    return old_school_list
+
+def GetSchoolInfo(school_id):
+    result = requests.get("https://api.cps.edu/schoolprofile/cps/SchoolProfileInformation?SchoolId={0}&SchoolYear=2021".format(school_id))
+    school_info = result.json()
+    for line in school_info:
+        return line["Short_Name"], line["School_Latitude"], line["School_Longitude"]
+
 def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
     # Total all cases from each school
     # how do we skip this if there are not new numbers?
@@ -50,7 +61,6 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
     new_update_dict = {}
     # freshTotals = Counter(fresh['CPS School ID'])
 
-    #makes a dict of school totals with schoolid = casetotals
     freshTotals = {}
     for week in fresh:
         if week['SchoolID'] not in freshTotals:
@@ -63,11 +73,32 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
     d7 = end - 6
     d14 = end - 13
     d21 = end - 20
-    # Primary df update
+
+    ignore_list = ["610377", "610012", "609703"]
+    old_school_list = listOfOldSchools(olddf)
+    new_schools = []
+
+    for school_id in freshTotals:
+        if (school_id not in old_school_list) & (school_id not in ignore_list):
+            new_schools.append(school_id)
+    new_school_data =[]
+    for school_id in new_schools:
+        school_info = GetSchoolInfo(school_id)
+        if school_info != None:
+            school_name = school_info[0].replace(" - ", "-")
+            new_school_data.append([school_name, school_info[1], school_info[2], school_id])
+        else:
+            logger.info("skipped School ID: {0}".format(school_id)) 
+
+    for new_school in new_school_data:
+        while len(new_school) < len(olddf.columns):
+            new_school.append(0)
+        olddf.loc[len(olddf)] = new_school
+    olddf.sort_values(by=['School'], inplace=True, ignore_index=True)
+
 
     for index, row in olddf.iterrows():
         if row['CPS_School_ID'] not in freshTotals:
-            # logger.info(row['CPS_School_ID'])
             continue
         # determines if there is and difference between old totals and fresh totals
         if row['gTotal'] - row['preSY2122'] != freshTotals[row['CPS_School_ID']]:
@@ -98,6 +129,7 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
                 day_total_dict[schoolName] = properties
 
     return olddf, updateChecker, updateNumbers, day_total_dict, new_update_dict
+
 def updateOldTotals(oldtotals, newdaily, formated):
 
     if str(oldtotals.at[len(oldtotals)-1,'date']) == formated:
