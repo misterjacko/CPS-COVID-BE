@@ -21,6 +21,8 @@ Resources:
             BucketName: "cpscovid.com"
         - SNSPublishMessagePolicy:
             TopicName: !GetAtt UpdateTopic.TopicName
+        - DynamoDBWritePolicy:
+            TableName: 'cpscovid'
         - Statement:
           - Sid: AllowCacheInvalidation
             Effect: Allow

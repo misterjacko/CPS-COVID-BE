@@ -17,6 +17,7 @@ logger.setLevel(logging.INFO)
 s3client = boto3.client('s3')
 snsclient = boto3.client('sns')
 cloudfrontclient = boto3.client('cloudfront')
+dynamodb = boto3.client('dynamodb')
 
 def newDataQuialityControl(freshurl):
     fresh = pd.read_csv(freshurl)
@@ -33,9 +34,45 @@ def downloadNewData (): # returns data as panndas.df
     fresh = response.json()
     return (fresh)
 
+def archiveYesterdaysPage(olddf):
+    yesterday = datetime.now() - timedelta(hours=30)
+    file_date = yesterday.strftime("%Y-%m-%d")
+    column_date = yesterday.strftime("%Y%m%d")
+    case_total = olddf[column_date].sum()
+
+    logger.info("Archiving yesterday's case page")
+    try:
+        move = s3client.copy_object(
+            CopySource='cpscovid.com/newcases.html',
+            Bucket='cpscovid.com',
+            Key='historical/{0}-cases.html'.format(file_date),
+            ContentType='text/html',
+            ACL='public-read'
+        )
+        logger.info(move)
+    except:
+        logger.info('historical export failed')
+
+    # append db
+    logger.info('Adding entry to table')
+    try:
+        put_db = dynamodb.put_item(
+            TableName = 'cpscovid',
+            Item = {
+                'item_usage' : {'S':'historical'},
+                'page_date': {'S': file_date},
+                'total_cases': {'N': str(case_total)},
+                'page_url': {'S': 'https://cpscovid.com/historical/{0}-cases.html'.format(file_date)},
+            },
+        )
+        logger.info(put_db)
+    except:
+        logger.info('DynamoDB append failed')
+
 def checkLastColumn(olddf, formated, updateChecker):
     # format todays date. )
     if formated not in olddf.columns:
+        archiveYesterdaysPage(olddf)
         olddf[formated] = 0
         updateChecker = True
         return olddf, updateChecker
