@@ -142,6 +142,32 @@ Resources:
       Environment:
         Variables:
           snsTopicArn: !Ref UpdateTopic
+  DynamoApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Cors: 
+        AllowMethods: "'GET'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+        # AllowCredentials: True
+      StageName: Prod
+  QueryDynamoFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: db_query/
+      Handler: app.lambda_handler
+      Runtime: python3.8
+      MemorySize: 128
+      Events:
+        SubscribeAPI:
+          Type: Api
+          Properties: 
+            Path: /prod
+            Method: GET
+            RestApiId: !Ref DynamoApi
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: 'cpscovid'
         
 Outputs:
   CPSCovidUpdateFunction:
