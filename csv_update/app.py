@@ -30,7 +30,7 @@ def newDataQuialityControl(freshurl):
 
 def downloadNewData (): # returns data as panndas.df
     start_date = "8-29-2021"
-    response = requests.get("	https://api.cps.edu/health/cps/schoolWeeklyCovidActionable?startdate={0}".format(start_date))
+    response = requests.get("https://api.cps.edu/health/cps/schoolWeeklyCovidActionable?startdate={0}".format(start_date))
     fresh = response.json()
     return (fresh)
 
@@ -204,13 +204,12 @@ def formatMessages(day_data, new_data, time):
         new_case_count += new_data[item]
 
     day_school_count = len(day_data)
-    day_case_count = 0
-    dataString = "<caption>Date: {0}</caption>".format(date_string)
-    dataString = "{0}<tr><th>School</th><th>New Cases</th></tr>".format(dataString)    
+    day_case_count = 0  
+    dataString = "<tr><th>School</th><th>New Cases</th></tr>"  
     for item in day_data:
         day_case_count += day_data[item][0]
         schoolURL = '?name={0}&Lat={1}&Long={2}'.format(item.replace(' ', '_'), day_data[item][1], day_data[item][2])
-        linkHTML = '<a href=./school.html{0}>{1}</a>'.format(schoolURL, item)
+        linkHTML = '<a href="http://cpscovid.com/school.html{0}">{1}</a>'.format(schoolURL, item)
         line = '<tr><td>{0}</td><td>{1}</td></tr>'.format(linkHTML, day_data[item][0])
         dataString = '{0}{1}'.format(dataString, line)
 
@@ -240,7 +239,7 @@ def formatMessages(day_data, new_data, time):
 def updateOldData(fresh):
     updateChecker = False
     updateNumbers = False
-    time = datetime.now() - timedelta(hours=6)
+    time = datetime.now() - timedelta(hours=5)
     formated = time.strftime("%Y%m%d")
 
     olddf = pd.read_csv("https://s3.amazonaws.com/cpscovid.com/data/allCpsCovidData.csv")
@@ -271,7 +270,7 @@ def updateOldData(fresh):
         exportUpdated(transposed, 'newFormatTest.csv')
         if updateNumbers:          
             dataString, sns_string, tweet_string = formatMessages(day_total_dict, new_update_dict, time)
-            exportHtml(dataString)
+            exportHtml(dataString, time)
             logger.info(sendSNS(sns_string)) # this requires topicARN and wont work in test
             invalidateCache()
             sendTweet(tweet_string)
@@ -296,9 +295,13 @@ def sendTweet(tweet_string):
     api.update_status(status = tweet_string)
 
 
-def exportHtml(dataString):
-    page = requests.get('https://s3.amazonaws.com/cpscovid.com/newcasesTemplate.html')
+def exportHtml(dataString, time):
+    date_string = time.strftime("%b. %d, %Y")
+    page = requests.get('https://s3.amazonaws.com/cpscovid.com/newcasesTemplate2.html')
     page = page.text
+    heading_string = 'Case data collected {0}'.format(date_string)
+    page = page.replace('Idd5YYYfjLovtnr7tQjN', date_string)
+    page = page.replace('ZQyo3KqWBwvUCb14J884', heading_string)
     page = page.replace('ZrIxb9bnehGHnFuptWw8', dataString)
 
     soup = bs4(page, 'html.parser')
