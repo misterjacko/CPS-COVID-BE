@@ -28,9 +28,9 @@ def newDataQuialityControl(freshurl):
     totalsdf = pd.read_csv("https://s3.amazonaws.com/cpscovid.com/data/allCpsCovidData.csv")
     assert fresh[fresh.columns[0]].equals(totalsdf[totalsdf.columns[0]]), "Table order rearranged!"
 
-def downloadNewData (): # returns data as panndas.df
+def downloadNewData (): # returns data as pandas.df
     start_date = "8-29-2021"
-    response = requests.get("https://api.cps.edu/health/cps/schoolWeeklyCovidActionable?startdate={0}".format(start_date))
+    response = requests.get("https://api.cps.edu/health/cps/School2021DailyCovidActionable?startdate={0}".format(start_date))
     fresh = response.json()
     return (fresh)
 
@@ -104,6 +104,7 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
             freshTotals[week['SchoolID']] = week['TotalCaseCount']
         else:
             freshTotals[week['SchoolID']] += week['TotalCaseCount']
+
     logger.info("SY2122 cases processed")
     # determines the column indexes for tail sums 
     end = len(olddf.columns)
