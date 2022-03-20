@@ -9,23 +9,6 @@ Globals:
     Timeout: 300
 
 Resources:
-  # CoverupFunction:
-  #   Type: AWS::Serverless::Function 
-  #   Properties:
-  #     CodeUri: uncover/
-  #     Handler: app.lambda_handler
-  #     Runtime: python3.8
-  #     MemorySize: 256
-  #     Policies:
-  #       - S3FullAccessPolicy:
-  #           BucketName: "cpscovid.com"
-  #     Events:
-  #       PingCoverup:
-  #         Type: Schedule
-  #         Properties:
-  #           Description: Activates function to archive school data
-  #           Enabled: True
-  #           Schedule: "cron(0/5 * ? * * *)" #every 5 minutes every day
   CPSCovidUpdateFunction:
     Type: AWS::Serverless::Function 
     Properties:
