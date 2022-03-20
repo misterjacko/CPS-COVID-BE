@@ -34,12 +34,29 @@ def downloadNewData (): # returns data as pandas.df
     fresh = response.json()
     return (fresh)
 
+def verify_yesterday_cases(olddf, column_date):
+    # quick return if there are not a total of 0 cases
+    if olddf[column_date].sum() != 0:
+        return True
+    else:
+        # checks in case of a cumulative 0 but still individual case reports
+        for row in olddf.iterrows():
+            if row[column_date] != 0:
+                return True
+    logger.info("No cases to Archive in column {}.".format(column_date))
+    return False
+
+
 def archiveYesterdaysPage(olddf):
-    yesterday = datetime.now() - timedelta(hours=30)
+    yesterday = datetime.now() - timedelta(days=1)
     file_date = yesterday.strftime("%Y-%m-%d")
     column_date = yesterday.strftime("%Y%m%d")
     case_total = olddf[column_date].sum()
 
+    # if not verify_yesterday_cases(olddf, column_date):
+    #     logger.info('No cases to Archive. Skipping Archive.')
+    #     return 
+    
     logger.info("Archiving yesterday's case page")
     try:
         move = s3client.copy_object(
@@ -54,6 +71,13 @@ def archiveYesterdaysPage(olddf):
         logger.info('historical export failed')
 
     # append db
+
+    
+    if not verify_yesterday_cases(olddf, column_date):
+        logger.info('No cases to Archive. Skipping Archive.')
+        return 
+
+
     logger.info('Adding entry to table')
     try:
         put_db = dynamodb.put_item(
