@@ -65,9 +65,9 @@ Resources:
         testUpdate:
           Type: Schedule
           Properties:
-            Description: Activates CPS Vax update at 00:10
+            Description: Activates CPS Vax update at 05:10 UTC
             Enabled: True
-            Schedule: "cron(10 0 ? * * *)"
+            Schedule: "cron(10 5 ? * * *)" # 00:10 CDT  23:10 CST
       Environment:
         Variables:
           cloudfrontCache: "E28928I27HS5YI"
