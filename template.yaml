@@ -33,9 +33,9 @@ Resources:
         testUpdate:
           Type: Schedule
           Properties:
-            Description: Activates CPS COVID Update Lambda Function every hour
+            Description: Activates CPS COVID Update Lambda Function every half-hour
             Enabled: True
-            Schedule: "cron(0/5 * ? * * *)" #every 5 minutes every day 
+            Schedule: "cron(0/30 * ? * * *)" #every 30 minutes every day 
       Environment:
         Variables:
           snsTopicArn: !Ref UpdateTopic
