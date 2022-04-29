@@ -44,7 +44,34 @@ Resources:
           consumer_secret: ${CONSUMER_SECRET}
           access_token: ${ACCESS_TOKEN}
           access_token_secret: ${ACCESS_TOKEN_SECRET}
-            
+  
+  VaxUpdateFunction:
+    Type: AWS::Serverless::Function 
+    Properties:
+      CodeUri: vax_update/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      MemorySize: 1024
+      Policies:
+        - S3FullAccessPolicy:
+            BucketName: "cpscovid.com"
+        - Statement:
+          - Sid: AllowCacheInvalidation
+            Effect: Allow
+            Action:
+            - cloudfront:CreateInvalidation
+            Resource: "*"
+      Events:
+        testUpdate:
+          Type: Schedule
+          Properties:
+            Description: Activates CPS Vax update at 00:10
+            Enabled: True
+            Schedule: "cron(10 0 ? * * *)"
+      Environment:
+        Variables:
+          cloudfrontCache: "E28928I27HS5YI"
+
   AlarmTopic:
     Type: AWS::SNS::Topic
     Properties:
@@ -83,7 +110,6 @@ Resources:
         AllowMethods: "'GET'"
         AllowHeaders: "'*'"
         AllowOrigin: "'*'"
-        # AllowCredentials: True
       StageName: Prod
 
   UpdateSubscriptionFunction:
