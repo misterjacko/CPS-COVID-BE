@@ -160,21 +160,21 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
 
 
     for index, row in olddf.iterrows():
-        if row['CPS_School_ID'] not in freshTotals:
-            continue
-        # determines if there is and difference between old totals and fresh totals
-        if row['gTotal'] - row['preSY2122'] != freshTotals[row['CPS_School_ID']]:
-            year_total = row['gTotal'] - row['preSY2122']
-            new_case_number = freshTotals[row['CPS_School_ID']] - year_total
-            # print("not")
-            #updates daily number and total
-            updateChecker = True
-            updateNumbers = True
+        if row['CPS_School_ID'] in freshTotals:
+            # determines if there is and difference between old totals and fresh totals
+            if row['gTotal'] - row['preSY2122'] != freshTotals[row['CPS_School_ID']]:
+                year_total = row['gTotal'] - row['preSY2122']
+                new_case_number = freshTotals[row['CPS_School_ID']] - year_total
+                # print("not")
+                #updates daily number and total
+                updateChecker = True
+                updateNumbers = True
 
-            new_update_dict[row['CPS_School_ID']] = new_case_number
-            olddf.at[index,formated] = new_case_number + row[formated]
-            olddf.at[index,['gTotal']] = freshTotals[row['CPS_School_ID']] + row['preSY2122']
+                new_update_dict[row['CPS_School_ID']] = new_case_number
+                olddf.at[index,formated] = new_case_number + row[formated]
+                olddf.at[index,['gTotal']] = freshTotals[row['CPS_School_ID']] + row['preSY2122']
 
+        # updates windows regardless
         olddf.at[index, ['7Total']] = olddf.iloc[index, d7:end].sum()
         olddf.at[index, ['14Total']] = olddf.iloc[index, d14:end].sum()
         olddf.at[index, ['21Total']] = olddf.iloc[index, d21:end].sum()
@@ -283,27 +283,27 @@ def updateOldData(fresh):
 
     if updateChecker:
         # update cpstotals
-        newdaily = olddf[formated].sum()
-        oldtotals = updateOldTotals(oldtotals, newdaily, formated)
+        # newdaily = olddf[formated].sum()
+        # oldtotals = updateOldTotals(oldtotals, newdaily, formated)
 
-        # make transposed df for easier parsing for front end maybe make a function
+        # # make transposed df for easier parsing for front end maybe make a function
         transposed = transposeDf(olddf)
 
-        # export to csv
-        exportUpdated(olddf, 'allCpsCovidData.csv')
-        exportUpdated(oldtotals, 'CPStotals.csv')
-        exportUpdated(transposed, 'newFormatTest.csv')
-        if updateNumbers:          
-            dataString, sns_string, tweet_string = formatMessages(day_total_dict, new_update_dict, time)
-            exportHtml(dataString, time)
-            logger.info(sendSNS(sns_string)) # this requires topicARN and wont work in test
-            invalidateCache()
-            sendTweet(tweet_string)
-            logger.info(tweet_string)
-            logger.info(sns_string)
+        # # export to csv
+        # exportUpdated(olddf, 'allCpsCovidData.csv')
+        # exportUpdated(oldtotals, 'CPStotals.csv')
+        # exportUpdated(transposed, 'newFormatTest.csv')
+        # if updateNumbers:          
+        #     dataString, sns_string, tweet_string = formatMessages(day_total_dict, new_update_dict, time)
+        #     exportHtml(dataString, time)
+        #     logger.info(sendSNS(sns_string)) # this requires topicARN and wont work in test
+        #     invalidateCache()
+        #     sendTweet(tweet_string)
+        #     logger.info(tweet_string)
+        #     logger.info(sns_string)
 
-            freshdf = pd.DataFrame.from_dict(fresh, orient='columns')
-            exportUpdated(freshdf, 'dataFromCPS.csv')
+        #     freshdf = pd.DataFrame.from_dict(fresh, orient='columns')
+        #     exportUpdated(freshdf, 'dataFromCPS.csv')
         
     else:
         logger.info("no update")
