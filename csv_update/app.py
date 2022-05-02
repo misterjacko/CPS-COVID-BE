@@ -283,27 +283,27 @@ def updateOldData(fresh):
 
     if updateChecker:
         # update cpstotals
-        # newdaily = olddf[formated].sum()
-        # oldtotals = updateOldTotals(oldtotals, newdaily, formated)
+        newdaily = olddf[formated].sum()
+        oldtotals = updateOldTotals(oldtotals, newdaily, formated)
 
         # # make transposed df for easier parsing for front end maybe make a function
         transposed = transposeDf(olddf)
 
-        # # export to csv
-        # exportUpdated(olddf, 'allCpsCovidData.csv')
-        # exportUpdated(oldtotals, 'CPStotals.csv')
-        # exportUpdated(transposed, 'newFormatTest.csv')
-        # if updateNumbers:          
-        #     dataString, sns_string, tweet_string = formatMessages(day_total_dict, new_update_dict, time)
-        #     exportHtml(dataString, time)
-        #     logger.info(sendSNS(sns_string)) # this requires topicARN and wont work in test
-        #     invalidateCache()
-        #     sendTweet(tweet_string)
-        #     logger.info(tweet_string)
-        #     logger.info(sns_string)
+        # export to csv
+        exportUpdated(olddf, 'allCpsCovidData.csv')
+        exportUpdated(oldtotals, 'CPStotals.csv')
+        exportUpdated(transposed, 'newFormatTest.csv')
+        if updateNumbers:          
+            dataString, sns_string, tweet_string = formatMessages(day_total_dict, new_update_dict, time)
+            exportHtml(dataString, time)
+            logger.info(sendSNS(sns_string)) # this requires topicARN and wont work in test
+            invalidateCache()
+            sendTweet(tweet_string)
+            logger.info(tweet_string)
+            logger.info(sns_string)
 
-        #     freshdf = pd.DataFrame.from_dict(fresh, orient='columns')
-        #     exportUpdated(freshdf, 'dataFromCPS.csv')
+            freshdf = pd.DataFrame.from_dict(fresh, orient='columns')
+            exportUpdated(freshdf, 'dataFromCPS.csv')
         
     else:
         logger.info("no update")
