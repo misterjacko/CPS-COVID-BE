@@ -1,4 +1,5 @@
 import boto3
+import json
 import requests
 from bs4 import BeautifulSoup as bs4
 import logging
@@ -47,6 +48,35 @@ def verify_yesterday_cases(olddf, column_date):
     return False
 
 
+def export_json():
+    yesterday = datetime.now() - timedelta(days=1)
+    file_date = yesterday.strftime("%Y-%m-%d")
+
+    bucket = "cpscovid.com"
+    old_key = 'data/dataFromCPS.csv'
+
+    logger.info("Downloading yesterday's last api response")
+    try:
+        old_data = pd.read_csv("https://{}/{}".format(bucket, old_key))
+        old_data = json.loads(old_data.to_json(orient="records"))
+    except Exception as e:
+        logger.info("ERROR: Unable to download yesterday's api response")
+        logger.info(e)
+
+    new_key = "data/daily-json/{}.json".format(file_date)
+    logger.info("saving yesterday's last api response as json")
+    try:
+        response = s3client.put_object(
+            Bucket=bucket,
+            Key=new_key,
+            Body=json.dumps(old_data),
+        )
+        logger.info(response)
+    except Exception as e:
+        logger.info("ERROR: Unable to save yesterday's api response as json")
+        logger.info(e)
+
+
 def archiveYesterdaysPage(olddf):
     yesterday = datetime.now() - timedelta(days=1)
     file_date = yesterday.strftime("%Y-%m-%d")
@@ -56,7 +86,7 @@ def archiveYesterdaysPage(olddf):
     # if not verify_yesterday_cases(olddf, column_date):
     #     logger.info('No cases to Archive. Skipping Archive.')
     #     return 
-    
+
     logger.info("Archiving yesterday's case page")
     try:
         move = s3client.copy_object(
@@ -97,6 +127,7 @@ def checkLastColumn(olddf, formated, updateChecker):
     # format todays date. )
     if formated not in olddf.columns:
         archiveYesterdaysPage(olddf)
+        export_json()
         olddf[formated] = 0
         updateChecker = True
         return olddf, updateChecker
