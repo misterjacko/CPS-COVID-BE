@@ -21,34 +21,52 @@ def import_dataset(url):
     return df
 
 
-def refresh_data(df, data):
+def refresh_data(df, school_data, vax_data):
     for index, row in df.iterrows():
         school_id = row["CPS_School_ID"]
+        
         try:
-            df.at[index, ["Student_Count"]] = data[school_id]["Student_Count"]
-            df.at[index, ["Vax_First_Dose"]] = data[school_id]["Vax_First_Dose"]
+
+            if row["School"] != school_data[school_id]["short_name"]:
+                print ("{}  -->  {}".format(row["School"], school_data[school_id]["short_name"]))
+            df.at[index, ["School"]] = school_data[school_id]["short_name"]
+            df.at[index, ["Latitude"]] = school_data[school_id]["latitude"]
+            df.at[index, ["Longitude"]] = school_data[school_id]["longitude"]
+            df.at[index, ["Student_Count"]] = vax_data[school_id]["student_count"]
+            df.at[index, ["Vax_First_Dose"]] = vax_data[school_id]["vax_first_dose"]
             # handles case with "None" vaccine data
-            if data[school_id]["Vax_Complete"] == None:
+            if vax_data[school_id]["vax_complete"] == None:
                 df.at[index, ["Vax_Complete"]] = 0
             else:
-                df.at[index, ["Vax_Complete"]] = data[school_id]["Vax_Complete"]
+                df.at[index, ["Vax_Complete"]] = vax_data[school_id]["vax_complete"]
         except Exception as e:
             logger.info("School ID in dataset but not in school API: {}".format(e))
             continue
     return df
 
 
-def call_api(api):
+def call_vax(api):
     vax_dict = {}
     response = requests.get(api)
     for school in response.json():
         vax_dict[school["SchoolID"]] = {
-            "Student_Count": school["OverallStudentCount"],
-            "Vax_Complete": school["OverallCompletedCount"],
-            "Vax_First_Dose": school["OverallOneDoseCount"],
+            "student_count": school["OverallStudentCount"],
+            "vax_complete": school["OverallCompletedCount"],
+            "vax_first_dose": school["OverallOneDoseCount"],
         }
     return vax_dict
 
+
+def call_school(api):
+    school_dict = {}
+    response = requests.get(api)
+    for school in response.json():
+        school_dict[school["SchoolID"]] = {
+            "short_name": school["SchoolShortName"].replace(" - ", "-"), # .replace(" ES", " ELEMENTARY SCHOOL").replace(" HS", " HIGH SCHOOL"),
+            "latitude": school["AddressLatitude"],
+            "longitude": school["AddressLongitude"],
+        }
+    return school_dict
 
 def export(df, fileName):
     csv_buffer = StringIO()
@@ -102,15 +120,19 @@ def invalidateCache():
 
 def lambda_handler(event, context):
     vax_api = "https://api.cps.edu/health/cps/SchoolCOVIDStudentVaccinationRate"
-    vax_data = call_api(vax_api)
+    vax_data = call_vax(vax_api)
+
+    school_api = "https://api.cps.edu/schoolprofile/cps/AllSchoolProfiles"
+    school_data = call_school(school_api)
 
     data_url = "https://s3.amazonaws.com/cpscovid.com/data/allCpsCovidData.csv"
     dataset = import_dataset(data_url)
 
-    dataset = refresh_data(dataset, vax_data)
-    transposed = transposeDf(dataset)
+    dataset = refresh_data(dataset, school_data, vax_data)
+    # dataset.sort_values(by=['School'], inplace=True, ignore_index=True)
+    # transposed = transposeDf(dataset)
 
-    export(dataset, "allCpsCovidData.csv")
-    export(transposed, "newFormatTest.csv")
+    # export(dataset, "allCpsCovidData.csv")
+    # export(transposed, "newFormatTest.csv")
     
-    logger.info(invalidateCache())
+    # logger.info(invalidateCache())
