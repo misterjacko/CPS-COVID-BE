@@ -1,4 +1,5 @@
 import boto3
+import sys
 import json
 import requests
 from bs4 import BeautifulSoup as bs4
@@ -30,8 +31,10 @@ def newDataQuialityControl(freshurl):
     assert fresh[fresh.columns[0]].equals(totalsdf[totalsdf.columns[0]]), "Table order rearranged!"
 
 def downloadNewData (): # returns data as pandas.df
-    start_date = "8-29-2021"
-    response = requests.get("https://api.cps.edu/health/cps/School2021DailyCovidActionable?startdate={0}".format(start_date))
+    # start_date = "8-29-2021"
+    # response = requests.get("https://api.cps.edu/health/cps/School2021DailyCovidActionable?startdate={0}".format(start_date)) # SY21-22
+
+    response = requests.get(f"https://api.cps.edu/health/V1/SchoolCovidDaySummary") # New
     fresh = response.json()
     return (fresh)
 
@@ -40,8 +43,8 @@ def verify_yesterday_cases(olddf, column_date):
     if olddf[column_date].sum() != 0:
         return True
     else:
-        # checks in case of a cumulative 0 but still individual case reports
-        for row in olddf.iterrows():
+        logger.info(f"Sum of cases for {column_date}: 0. Checking each school.")
+        for index, row in olddf.iterrows():
             if row[column_date] != 0:
                 return True
     logger.info("No cases to Archive in column {}.".format(column_date))
@@ -83,9 +86,9 @@ def archiveYesterdaysPage(olddf):
     column_date = yesterday.strftime("%Y%m%d")
     case_total = olddf[column_date].sum()
 
-    # if not verify_yesterday_cases(olddf, column_date):
-    #     logger.info('No cases to Archive. Skipping Archive.')
-    #     return 
+    if not verify_yesterday_cases(olddf, column_date):
+        logger.info('No cases to Archive. Skipping Archive.')
+        return 
 
     logger.info("Archiving yesterday's case page")
     try:
@@ -101,11 +104,6 @@ def archiveYesterdaysPage(olddf):
         logger.info('historical export failed')
 
     # append db
-
-    
-    if not verify_yesterday_cases(olddf, column_date):
-        logger.info('No cases to Archive. Skipping Archive.')
-        return 
 
 
     logger.info('Adding entry to table')
@@ -154,13 +152,13 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
     # freshTotals = Counter(fresh['CPS School ID'])
 
     freshTotals = {}
-    for week in fresh:
-        if week['SchoolID'] not in freshTotals:
-            freshTotals[week['SchoolID']] = week['TotalCaseCount']
+    for entry in fresh:
+        if entry['SchoolID'] not in freshTotals:
+            freshTotals[entry['SchoolID']] = entry['TotalCaseCount']
         else:
-            freshTotals[week['SchoolID']] += week['TotalCaseCount']
+            freshTotals[entry['SchoolID']] += entry['TotalCaseCount']
 
-    logger.info("SY2122 cases processed")
+    logger.info("Summer 22 cases processed")
     # determines the column indexes for tail sums 
     end = len(olddf.columns)
     d7 = end - 6
@@ -193,8 +191,8 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
     for index, row in olddf.iterrows():
         if row['CPS_School_ID'] in freshTotals:
             # determines if there is and difference between old totals and fresh totals
-            if row['gTotal'] - row['preSY2122'] != freshTotals[row['CPS_School_ID']]:
-                year_total = row['gTotal'] - row['preSY2122']
+            if row['gTotal'] - row['preSY2122'] - row['SY2122'] != freshTotals[row['CPS_School_ID']]:
+                year_total = row['gTotal'] - row['preSY2122']- row['SY2122'] 
                 new_case_number = freshTotals[row['CPS_School_ID']] - year_total
                 # print("not")
                 #updates daily number and total
@@ -203,7 +201,7 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
 
                 new_update_dict[row['CPS_School_ID']] = new_case_number
                 olddf.at[index,formated] = new_case_number + row[formated]
-                olddf.at[index,['gTotal']] = freshTotals[row['CPS_School_ID']] + row['preSY2122']
+                olddf.at[index,['gTotal']] = freshTotals[row['CPS_School_ID']] + row['preSY2122'] + row['SY2122'] 
 
         # updates windows regardless
         olddf.at[index, ['7Total']] = olddf.iloc[index, d7:end].sum()
