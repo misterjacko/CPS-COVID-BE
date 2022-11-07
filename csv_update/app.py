@@ -21,14 +21,14 @@ snsclient = boto3.client('sns')
 cloudfrontclient = boto3.client('cloudfront')
 dynamodb = boto3.client('dynamodb')
 
-def newDataQuialityControl(freshurl):
-    fresh = pd.read_csv(freshurl)
-    # checks dimensions raw shape should be (517, 6)
-    assert fresh.shape == (517, 6), "New dataframe is the wrong shape!"
-    # makes sure schools are in same order
-    fresh[fresh.columns[0]] = fresh[fresh.columns[0]].apply(lambda x: formatSchoolNames(x))
-    totalsdf = pd.read_csv("https://s3.amazonaws.com/cpscovid.com/data/allCpsCovidData.csv")
-    assert fresh[fresh.columns[0]].equals(totalsdf[totalsdf.columns[0]]), "Table order rearranged!"
+# def newDataQuialityControl(freshurl):
+#     fresh = pd.read_csv(freshurl)
+#     # checks dimensions raw shape should be (517, 6)
+#     assert fresh.shape == (517, 6), "New dataframe is the wrong shape!"
+#     # makes sure schools are in same order
+#     fresh[fresh.columns[0]] = fresh[fresh.columns[0]].apply(lambda x: formatSchoolNames(x))
+#     totalsdf = pd.read_csv("https://s3.amazonaws.com/cpscovid.com/data/allCpsCovidData.csv")
+#     assert fresh[fresh.columns[0]].equals(totalsdf[totalsdf.columns[0]]), "Table order rearranged!"
 
 def downloadNewData (): # returns data as pandas.df
     # start_date = "8-29-2021"
@@ -158,7 +158,7 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
         else:
             freshTotals[entry['SchoolID']] += entry['TotalCaseCount']
 
-    logger.info("Summer 22 cases processed")
+    logger.info("SY 22-23 cases processed")
     # determines the column indexes for tail sums 
     end = len(olddf.columns)
     d7 = end - 6
@@ -187,12 +187,17 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
         olddf.loc[len(olddf)] = new_school
     olddf.sort_values(by=['School'], inplace=True, ignore_index=True)
 
-
+    logger.info(f"fresh length is: {len(fresh)}")
+    # if len(fresh) < 500: # TODO make this shout shenanigans!
+    #     logger.info("The Session has likely reset! Halting Data Update by keeping updateNumbers at False!!")
+    #     updateNumbers = False
+    # else:
+        # needs to be skipped if school session changes
     for index, row in olddf.iterrows():
         if row['CPS_School_ID'] in freshTotals:
             # determines if there is and difference between old totals and fresh totals
-            if row['gTotal'] - row['preSY2122'] - row['SY2122'] != freshTotals[row['CPS_School_ID']]:
-                year_total = row['gTotal'] - row['preSY2122']- row['SY2122'] 
+            if row['gTotal'] - row['preSY2122'] - row['SY2122'] - row['Summer_22'] != freshTotals[row['CPS_School_ID']]:
+                year_total = row['gTotal'] - row['preSY2122'] - row['SY2122'] - row['Summer_22'] 
                 new_case_number = freshTotals[row['CPS_School_ID']] - year_total
                 # print("not")
                 #updates daily number and total
@@ -201,12 +206,13 @@ def updateOldDf(olddf, fresh, formated, updateChecker, updateNumbers):
 
                 new_update_dict[row['CPS_School_ID']] = new_case_number
                 olddf.at[index,formated] = new_case_number + row[formated]
-                olddf.at[index,['gTotal']] = freshTotals[row['CPS_School_ID']] + row['preSY2122'] + row['SY2122'] 
+                olddf.at[index,['gTotal']] = freshTotals[row['CPS_School_ID']] + row['preSY2122'] + row['SY2122'] + row['Summer_22']
 
         # updates windows regardless
         olddf.at[index, ['7Total']] = olddf.iloc[index, d7:end].sum()
         olddf.at[index, ['14Total']] = olddf.iloc[index, d14:end].sum()
         olddf.at[index, ['21Total']] = olddf.iloc[index, d21:end].sum()
+    
     logger.info("New and old cases compared")
     if updateNumbers:
         for index, row in olddf.iterrows():
@@ -296,6 +302,7 @@ def updateOldData(fresh):
     time = datetime.now() - timedelta(hours=5)
     formated = time.strftime("%Y%m%d")
 
+    # olddf = pd.read_csv("https://s3.amazonaws.com/cpscovid.com/data/newyear.csv")
     olddf = pd.read_csv("https://s3.amazonaws.com/cpscovid.com/data/allCpsCovidData.csv")
     logger.info("S3 Date Downloaded")
     oldtotals = pd.read_csv("https://s3.amazonaws.com/cpscovid.com/data/CPStotals.csv")
