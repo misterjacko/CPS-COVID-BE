@@ -299,7 +299,8 @@ def formatMessages(day_data, new_data, time):
 def updateOldData(fresh):
     updateChecker = False
     updateNumbers = False
-    time = datetime.now() - timedelta(hours=5)
+    time = datetime.now() - timedelta(hours=6)
+    # TODO: automate time changes
     formated = time.strftime("%Y%m%d")
 
     # olddf = pd.read_csv("https://s3.amazonaws.com/cpscovid.com/data/newyear.csv")
