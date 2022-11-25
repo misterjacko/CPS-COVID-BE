@@ -294,7 +294,18 @@ def formatMessages(day_data, new_data, time):
     tweet_string = '{0}Schools affected: {1}\n\n'.format(tweet_string, day_school_count)
     tweet_string = '{0}View the list of cases at cpscovid.com/newcases.html\n\n'.format(tweet_string)
     tweet_string = '{0}*this is an auto-generated tweet'.format(tweet_string)
-    return dataString, sns_string, tweet_string
+
+    # Facebook Formatting
+    facebook_string = "Case numbers updated by Chicago Public Schools.\n\n"
+    facebook_string = f"{facebook_string}Update: {date_time_string}\n"
+    facebook_string = f"{facebook_string}New cases: {new_case_count}\n"
+    facebook_string = f"{facebook_string}Schools affected: {new_school_count}\n\n"
+    facebook_string = f"{facebook_string}Cumulative cases reported {date_string}\n"
+    facebook_string = f"{facebook_string}New cases: {day_case_count}\n"
+    facebook_string = f"{facebook_string}Schools affected: {day_school_count}\n\n"
+    facebook_string = f"{facebook_string}View the list of cases at https://cpscovid.com/newcases.html\n\n"
+    facebook_string = f"{facebook_string}*this is an auto-generated post"
+    return dataString, sns_string, tweet_string, facebook_string
 
 def updateOldData(fresh):
     updateChecker = False
@@ -331,19 +342,34 @@ def updateOldData(fresh):
         exportUpdated(oldtotals, 'CPStotals.csv')
         exportUpdated(transposed, 'newFormatTest.csv')
         if updateNumbers:          
-            dataString, sns_string, tweet_string = formatMessages(day_total_dict, new_update_dict, time)
+            dataString, sns_string, tweet_string, facebook_string = formatMessages(day_total_dict, new_update_dict, time)
             exportHtml(dataString, time)
             logger.info(sendSNS(sns_string)) # this requires topicARN and wont work in test
             invalidateCache()
             sendTweet(tweet_string)
             logger.info(tweet_string)
-            logger.info(sns_string)
 
             freshdf = pd.DataFrame.from_dict(fresh, orient='columns')
             exportUpdated(freshdf, 'dataFromCPS.csv')
+
+            logger.info(facebook_string)
+            postFBUpdate(facebook_string)
         
     else:
         logger.info("no update")
+
+def postFBUpdate(facebook_string):
+    page_id = os.environ["FB_PAGE_ID"]
+    access_token = os.environ["FB_ACCESS_TOKEN"]
+
+    post_url = f"https://graph.facebook.com/{page_id}/feed"
+    payload = {
+        "message": facebook_string,
+        "access_token": access_token
+    }
+    r = requests.post(post_url, data=payload)
+    logger.info(r.text)
+     
 
 def sendTweet(tweet_string):
     consumer_key = os.environ['consumer_key']
