@@ -310,7 +310,7 @@ def formatMessages(day_data, new_data, time):
 def updateOldData(fresh):
     updateChecker = False
     updateNumbers = False
-    time = datetime.now() - timedelta(hours=6)
+    time = datetime.now() - timedelta(hours=5)
     # TODO: automate time changes
     formated = time.strftime("%Y%m%d")
 
@@ -346,7 +346,7 @@ def updateOldData(fresh):
             exportHtml(dataString, time)
             logger.info(sendSNS(sns_string)) # this requires topicARN and wont work in test
             invalidateCache()
-            sendTweet(tweet_string)
+            # sendTweet(tweet_string)
             logger.info(tweet_string)
 
             freshdf = pd.DataFrame.from_dict(fresh, orient='columns')
